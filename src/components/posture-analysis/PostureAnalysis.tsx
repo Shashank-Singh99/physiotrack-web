@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { BlobProvider, PDFDownloadLink } from "@react-pdf/renderer";
+import { BlobProvider, pdf } from "@react-pdf/renderer";
 import PdfDocument from "../pdf-document/PdfDocument";
 import { Layer, Stage, Image as KonvaImage } from "react-konva";
 import useImage from "use-image";
@@ -7,7 +7,7 @@ import { DimensionsContext } from "../../contexts/DimensionsContextProvider";
 import { pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
-import { Box, Button, Fab, Typography } from "@mui/material";
+import { Box, Fab, Typography } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { Document, Page } from "react-pdf";
 import { ScreenshotContext } from "../../contexts/ScreenshotContextProvider";
@@ -18,6 +18,8 @@ import {
   handleTouchStart,
 } from "../../utils/canvasEvents";
 import CustomLoader from "../CustomLoader";
+import { getDownloadURL, uploadBytesResumable } from "firebase/storage";
+import { storage, ref } from "../../utils/firebaseConfig";
 
 // https://github.com/diegomura/react-pdf/issues/1113
 // https://github.com/wojtekmaj/react-pdf?tab=readme-ov-file
@@ -39,6 +41,7 @@ function PostureAnalysis() {
 
   const [isReportViewed, setIsReportViewed] = useState(false);
   const [mainImgSrc, setMainImgSrc] = useState<string>(null);
+  const [pdfDownloadUrl, setPdfDownloadUrl] = useState<string>(null);
 
   useEffect(() => {
     if (reportRef.current === null) {
@@ -54,60 +57,91 @@ function PostureAnalysis() {
     setScreenshot(null);
   }
 
+  const uploadPdf = async () => {
+    const blob = await pdf(
+      PdfDocument({ mainImgSrc, data: reportData })
+    ).toBlob();
+    console.log("The apple and guava bar ", blob);
+    if (blob) {
+      await uploadFile(blob, "PhysioTrack Anterior Posture Evaluation");
+    }
+  };
+
+  const uploadFile = async (blobFile, fileName): Promise<string> => {
+    if (!blobFile) return;
+    const sotrageRef = ref(storage, `images/${fileName}`);
+    const uploadTask = uploadBytesResumable(sotrageRef, blobFile);
+    uploadTask.on(
+      "state_changed",
+      null,
+      (error) => console.log(error),
+      async () => {
+        const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+        console.log("Download url is : ", downloadUrl);
+        setPdfDownloadUrl(downloadUrl);
+        if (downloadUrl) {
+          window.postMessage('terminate-' + downloadUrl);
+        }
+      }
+    );
+  };
+
   return (
     <>
       {isReportViewed ? (
         isReportViewed && (
           <>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2 }}>
-          <Typography sx={{ m: 2 }} variant="h3" component="h3">
-          {'Report Preview'}
-      </Typography>
-      <Typography variant="h6" component="h6">
-          {'Download to view the detailed report'}
-      </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 5 }}>
-            <BlobProvider
-              document={
-                <PdfDocument mainImgSrc={mainImgSrc} data={reportData} />
-              }
-            >
-              {({ blob, url, loading }) => {
-                return loading ? (
-                  <CustomLoader />
-                ) : (
-                  <Document
-                    file={url}
-                    onLoadSuccess={() => {}}
-                    renderMode="canvas"
-                  >
-                    <Page pageNumber={1} width={clientWidth} />
-                  </Document>
-                );
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                mt: 2,
               }}
-            </BlobProvider>
-            <PDFDownloadLink
-              document={
-                <PdfDocument mainImgSrc={mainImgSrc} data={reportData} />
-              }
-              fileName="PhysioTrack Anterior Posture Evaluation.pdf"
             >
-              {({ blob, url, loading, error }) =>
-                loading ? (
-                  <CustomLoader />
-                ) : (
-                  <Fab
-                    color="primary"
-                    aria-label="add"
-                    sx={{ position: "absolute", bottom: 110, right: 16 }}
-                  >
-                    <DownloadIcon />
-                  </Fab>
-                )
-              }
-            </PDFDownloadLink>
-          </Box>
+              <Typography sx={{ m: 2 }} variant="h3" component="h3">
+                {"Report Preview"}
+              </Typography>
+              <Typography variant="h6" component="h6">
+                {"Download to view the detailed report"}
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                mt: 5,
+              }}
+            >
+              <BlobProvider
+                document={
+                  <PdfDocument mainImgSrc={mainImgSrc} data={reportData} />
+                }
+              >
+                {({ blob, url, loading }) => {
+                  return loading ? (
+                    <CustomLoader />
+                  ) : (
+                    <Document
+                      file={url}
+                      onLoadSuccess={() => {}}
+                      renderMode="canvas"
+                    >
+                      <Page pageNumber={1} width={clientWidth} />
+                    </Document>
+                  );
+                }}
+              </BlobProvider>
+              <Fab
+                color="primary"
+                aria-label="add"
+                sx={{ position: "absolute", bottom: 110, right: 16 }}
+                onClick={uploadPdf}
+              >
+                <DownloadIcon />
+              </Fab>
+            </Box>
           </>
         )
       ) : (

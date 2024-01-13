@@ -297,7 +297,7 @@ function PostureVerify() {
                     x={keyPoint.x}
                     y={keyPoint.y}
                     key={keyPoint.name}
-                    radius={6}
+                    radius={4}
                     fill="rgb(0, 216, 216)"
                     stroke="white"
                     strokeWidth={4}
@@ -352,7 +352,7 @@ function PostureVerify() {
       <Fab
         color="primary"
         aria-label="add"
-        sx={{ position: "absolute", top: 600, right: 36 }}
+        sx={{ position: "absolute", top: 500, right: 36 }}
         onClick={verifyPosture}
       >
         <RoomIcon />
@@ -360,7 +360,7 @@ function PostureVerify() {
       <Fab
         color="secondary"
         aria-label="add"
-        sx={{ position: "absolute", top: 680, right: 36 }}
+        sx={{ position: "absolute", top: 580, right: 36 }}
         onClick={drawImageWithLandmarksOnCanvas}
       >
         <AutoFixHighIcon />
