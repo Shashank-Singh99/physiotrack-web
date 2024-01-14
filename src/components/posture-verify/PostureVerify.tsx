@@ -21,7 +21,7 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { DimensionsContext } from "../../contexts/DimensionsContextProvider";
 import { Point, ReportData } from "../../types/types";
 import { ANGLES, findAngle, getMidPoint } from "./utils";
-import { BLACK_LIST, CONNECTIONS } from "./constants";
+import { BLACK_LIST, CONNECTIONS, LM } from "./constants";
 import { Stage as StageType } from "konva/lib/Stage";
 import "@tensorflow/tfjs-backend-webgl";
 import * as tf from "@tensorflow/tfjs-core";
@@ -37,6 +37,7 @@ import {
   handleTouchStart,
 } from "../../utils/canvasEvents";
 import CustomLoader from "../CustomLoader";
+import OverlayLoader from "../OverlayLoader";
 
 const detectorConfig = {
   runtime: "tfjs",
@@ -73,6 +74,9 @@ function PostureVerify() {
   const [arcs, setArcs] = useState<ArcType[]>([]);
   const [isPostureVerified, setIsPostureVerified] = useState(false);
   const [detector, setDetector] = useState<poseDetection.PoseDetector>(null);
+
+  const [showOverlaySpinner, setShowOverlaySpinner] = useState(false);
+  const [lineOfGravityPoints, setLineOfGravityPoints] = useState([]);
 
   const { screenshot, setScreenshot } = useContext(ScreenshotContext);
   const { setReportData } = useContext(ReportDataContext);
@@ -163,6 +167,8 @@ function PostureVerify() {
     );
     setArcs(drawnArcs);
 
+    drawLineOfGravity();
+
     await wait(1000, "Apple");
 
     const reportArcs: ArcType[] = ANGLES.map((a) =>
@@ -176,6 +182,27 @@ function PostureVerify() {
       };
     });
     setReportData(reportData);
+  };
+
+  const drawLineOfGravity = () => {
+    const nose = keyPoints[LM.NOSE];
+    const rightShoulder = keyPoints[LM.RIGHT_SHOULDER];
+    const leftShoulder = keyPoints[LM.LEFT_SHOULDER];
+    const rightHip = keyPoints[LM.RIGHT_HIP];
+    const leftHip = keyPoints[LM.LEFT_HIP];
+    const rightFoot = keyPoints[LM.RIGHT_FOOT];
+    const leftFoot = keyPoints[LM.LEFT_FOOT];
+    const rightKnee = keyPoints[LM.RIGHT_KNEE];
+    const leftKnee = keyPoints[LM.LEFT_KNEE];
+
+
+    const shoulderMidPoint = getMidPoint(rightShoulder, leftShoulder);
+    const pelvicMidPoint = getMidPoint(rightHip, leftHip);
+    const footMidPoint = getMidPoint(rightFoot, leftFoot);
+    const kneeMidPoint = getMidPoint(rightKnee, leftKnee);
+
+    const lineOfGravityArray  = [nose.x, nose.y - 100, shoulderMidPoint.x, shoulderMidPoint.y,  pelvicMidPoint.x, pelvicMidPoint.y, kneeMidPoint.x, kneeMidPoint.y, footMidPoint.x, footMidPoint.y];
+    setLineOfGravityPoints(lineOfGravityArray);    
   };
 
   function drawArc(
@@ -220,6 +247,7 @@ function PostureVerify() {
   };
 
   async function drawImageWithLandmarksOnCanvas() {
+    setShowOverlaySpinner(true);
     console.log("Apple : ", 0);
     if (!konvaRef.current || !detector) return;
     try {
@@ -231,9 +259,11 @@ function PostureVerify() {
       setKeyPoints(poses[0].keypoints);
       console.log(poses[0].keypoints);
       console.log("Guava");
+      setShowOverlaySpinner(false);
     } catch (e) {
       console.log("Error spotted");
       console.error(e);
+      setShowOverlaySpinner(false);
     }
   }
 
@@ -257,8 +287,10 @@ function PostureVerify() {
   };
 
   const verifyPosture = async () => {
+    setShowOverlaySpinner(true);
     setIsPostureVerified(true);
-    confirmPosture();
+    await confirmPosture();
+    setShowOverlaySpinner(false);
   };
 
   if (error) {
@@ -271,6 +303,7 @@ function PostureVerify() {
 
   return (
     <div>
+      { showOverlaySpinner && <OverlayLoader /> }
       {keyPoints && (
         <Stage
           width={width}
@@ -298,9 +331,9 @@ function PostureVerify() {
                     y={keyPoint.y}
                     key={keyPoint.name}
                     radius={4}
-                    fill="rgb(0, 216, 216)"
-                    stroke="white"
-                    strokeWidth={4}
+                    fill="white"
+                    stroke="blue"
+                    strokeWidth={2}
                     onDragStart={(e) => handleDragStart(e, keyPoint.name)}
                     onDragEnd={(e) => handleDragEnd(e, keyPoint.name)}
                     draggable
@@ -321,7 +354,7 @@ function PostureVerify() {
                       keyPoints[con[1]].y,
                     ]}
                     stroke="white"
-                    strokeWidth={4}
+                    strokeWidth={2}
                     perfectDrawEnabled
                   />
                 );
@@ -338,7 +371,7 @@ function PostureVerify() {
                     x={angle.x}
                     y={angle.y}
                     stroke="red"
-                    strokeWidth={3}
+                    strokeWidth={2}
                     innerRadius={angle.radius}
                     outerRadius={0}
                     clockwise={angle.clockWise}
@@ -347,12 +380,24 @@ function PostureVerify() {
               })}
             </Layer>
           )}
+
+          { isPostureVerified && arcs.length > 0 && (
+            <Layer>
+              <Line
+                    points={lineOfGravityPoints}
+                    stroke="red"
+                    strokeWidth={2}
+                    dash={[3,3]}
+                    perfectDrawEnabled
+                  />
+            </Layer>
+          )}
         </Stage>
       )}
       <Fab
         color="primary"
         aria-label="add"
-        sx={{ position: "absolute", top: 500, right: 36 }}
+        sx={{ position: "absolute", top: 550, right: 36, width: 50, height: 50 }}
         onClick={verifyPosture}
       >
         <RoomIcon />
@@ -360,7 +405,7 @@ function PostureVerify() {
       <Fab
         color="secondary"
         aria-label="add"
-        sx={{ position: "absolute", top: 580, right: 36 }}
+        sx={{ position: "absolute", top: 550, left: 36, width: 50, height: 50 }}
         onClick={drawImageWithLandmarksOnCanvas}
       >
         <AutoFixHighIcon />
