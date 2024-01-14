@@ -371,7 +371,7 @@ function PostureVerify() {
                     x={angle.x}
                     y={angle.y}
                     stroke="red"
-                    strokeWidth={2}
+                    strokeWidth={1}
                     innerRadius={angle.radius}
                     outerRadius={0}
                     clockwise={angle.clockWise}

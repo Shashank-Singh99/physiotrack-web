@@ -36,6 +36,8 @@ export const BLACK_LIST = [
   "left_thumb",
   "right_thumb",
   "nose",
+  "right_heel",
+  "left_heel"
 ];
 
 export const CONNECTIONS = [
@@ -57,8 +59,8 @@ export const CONNECTIONS = [
   [LM.LEFT_ANKLE, LM.RIGHT_ANKLE],
   [LM.RIGHT_HIP, LM.RIGHT_KNEE],
   [LM.LEFT_ANKLE, LM.LEFT_FOOT],
-  [LM.LEFT_ANKLE, LM.LEFT_HEEL],
+  // [LM.LEFT_ANKLE, LM.LEFT_HEEL],
   [LM.RIGHT_ANKLE, LM.RIGHT_FOOT],
-  [LM.RIGHT_ANKLE, LM.RIGHT_HEEL],
+  // [LM.RIGHT_ANKLE, LM.RIGHT_HEEL],
   [LM.LEFT_FOOT, LM.RIGHT_FOOT],
 ];
